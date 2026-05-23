@@ -56,42 +56,32 @@ st.title("📌 Pinterest Pin Generator")
 st.markdown("---")
 
 # ── API KEY SECTION ──────────────────────
-with st.expander("🔑 API Key Settings", expanded=not st.session_state.groq_key):
+# ── API KEY SECTION ──────────────────────
+with st.expander("🔑 API Key", expanded=not st.session_state.groq_key):
 
-    if st.session_state.groq_key:
-        st.success("✅ Groq API Key loaded from phone memory")
+    if st.session_state.groq_key and not st.session_state.get("changing_key", False):
+        st.success("✅ API Key loaded from phone memory")
         if st.button("🔄 Change Key"):
+            st.session_state.changing_key = True
             st.session_state.groq_key = ""
             st_javascript("localStorage.removeItem('groq_key')")
             st.rerun()
     else:
+        st.markdown("Paste your Groq API key below — it will be saved automatically to this phone.")
         new_key = st.text_input(
-            "Enter Groq API Key",
+            "Groq API Key",
             type="password",
             placeholder="gsk_..."
         )
-
-        if new_key and new_key != st.session_state.pending_key:
-            st.session_state.pending_key = new_key
-            st.session_state.show_save_prompt = True
-
-        if st.session_state.show_save_prompt and st.session_state.pending_key:
-            st.info("💾 Save this key to your phone so you never have to enter it again?")
-            col1, col2 = st.columns(2)
-            with col1:
-                if st.button("✅ Yes, Save to Phone", use_container_width=True):
-                    st.session_state.groq_key = st.session_state.pending_key
-                    st_javascript(f"localStorage.setItem('groq_key', '{st.session_state.pending_key}')")
-                    st.session_state.show_save_prompt = False
-                    st.session_state.pending_key = ""
-                    st.success("✅ Key saved to phone memory!")
-                    st.rerun()
-            with col2:
-                if st.button("❌ No, Just This Session", use_container_width=True):
-                    st.session_state.groq_key = st.session_state.pending_key
-                    st.session_state.show_save_prompt = False
-                    st.session_state.pending_key = ""
-                    st.rerun()
+        if st.button("💾 Save Key", use_container_width=True):
+            if new_key:
+                st.session_state.groq_key = new_key
+                st.session_state.changing_key = False
+                st_javascript(f"localStorage.setItem('groq_key', '{new_key}')")
+                st.success("✅ Key saved!")
+                st.rerun()
+            else:
+                st.error("Please paste your key first.")
 
 # ── SIDEBAR ──────────────────────────────
 with st.sidebar:
