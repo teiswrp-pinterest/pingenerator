@@ -6,7 +6,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-client = Groq(api_key=os.getenv("GROQ_API_KEY"))
+#client = Groq(api_key=os.getenv("GROQ_API_KEY"))
 
 def images_to_base64(image_files):
     encoded = []
@@ -19,7 +19,7 @@ def images_to_base64(image_files):
 # STEP 1: Deep visual analysis of product
 # ─────────────────────────────────────────
 def analyze_product_images(image_files):
-
+    client = Groq(api_key=os.getenv("GROQ_API_KEY"))
     encoded_images = images_to_base64(image_files)
 
     content = []
@@ -65,7 +65,7 @@ Analyze this product image in detail. Return ONLY a JSON object, no extra text:
 # STEP 2: Generate pins using visual analysis
 # ─────────────────────────────────────────
 def generate_pins_from_analysis(analysis, amazon_url, user_idea):
-
+    client = Groq(api_key=os.getenv("GROQ_API_KEY"))
     analysis_text = json.dumps(analysis, indent=2)
 
     prompt = f"""
