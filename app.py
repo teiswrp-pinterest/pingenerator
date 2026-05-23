@@ -44,10 +44,10 @@ with st.sidebar:
         placeholder="https://www.amazon.in/..."
     )
 
-    st.markdown("**Upload Screenshots**")
+    st.markdown("**Upload Product Images**")
     uploaded_files = st.file_uploader(
-        "Choose from files",
-        type=["jpg", "jpeg", "png", "webp"],
+        "Choose from gallery",
+        type=None,
         accept_multiple_files=True,
         key="file_uploader"
     )
@@ -63,11 +63,6 @@ with st.sidebar:
             f.seek(0)
 
     # add camera photo to list
-    if camera_photo:
-        cam_bytes = camera_photo.read()
-        if cam_bytes not in st.session_state.image_bytes_list:
-            st.session_state.image_bytes_list.append(cam_bytes)
-            st.session_state.image_names.append("camera_photo.jpg")
 
     # show stored images
     if st.session_state.image_bytes_list:
