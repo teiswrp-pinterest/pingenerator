@@ -52,8 +52,8 @@ with st.sidebar:
         key="file_uploader"
     )
 
-    st.markdown("**Or take a photo 📷**")
-    camera_photo = st.camera_input("Take product photo")
+    # st.markdown("**Or take a photo 📷**")
+    # camera_photo = st.camera_input("Take product photo")
 
     # store uploaded file bytes in session state
     if uploaded_files:
