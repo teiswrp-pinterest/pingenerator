@@ -199,14 +199,13 @@ if st.session_state.pins:
             st.markdown("**🪝 Title**")
             st.code(pin['title'], language=None)
 
-            st.markdown("**📝 Description**")
-            st.code(pin['description'], language=None)
-
-            st.markdown("**✅ Key Points**")
-            st.code(bullet_text, language=None)
-
-            st.markdown("**⭐ Rating Angle**")
-            st.code(pin['rating_tip'], language=None)
+            st.markdown("**📝 Description, Key Points & Rating**")
+            combined = (
+                pin['description'] + "\n\n" +
+                bullet_text + "\n\n" +
+                "⭐ " + pin['rating_tip']
+            )
+            st.code(combined, language=None)
 
             st.markdown("**🎨 Image Prompt**")
             st.code(pin['image_prompt'], language=None)
@@ -215,9 +214,7 @@ if st.session_state.pins:
         all_content += (
             f"PIN {i+1}: {pin['pin_angle']}\n\n"
             f"TITLE:\n{pin['title']}\n\n"
-            f"DESCRIPTION:\n{pin['description']}\n\n"
-            f"KEY POINTS:\n{bullet_text}\n\n"
-            f"RATING TIP:\n{pin['rating_tip']}\n\n"
+            f"DESCRIPTION, KEY POINTS & RATING:\n{pin['description']}\n\n{bullet_text}\n\n⭐ {pin['rating_tip']}\n\n"
             f"IMAGE PROMPT:\n{pin['image_prompt']}\n\n"
             f"{'='*50}\n\n"
         )
