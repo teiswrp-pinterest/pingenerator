@@ -13,53 +13,65 @@ st.set_page_config(
 
 PINS_CACHE = "last_pins.json"
 
-# ── SAVE / LOAD PINS ────────────────────
-def save_pins(pins, analysis):
+def save_pins(pins, analysis, amazon_url):
     with open(PINS_CACHE, "w") as f:
-        json.dump({"pins": pins, "analysis": analysis}, f)
+        json.dump({"pins": pins, "analysis": analysis, "amazon_url": amazon_url}, f)
 
 def load_pins():
     if os.path.exists(PINS_CACHE):
         with open(PINS_CACHE, "r") as f:
             data = json.load(f)
-            return data.get("pins"), data.get("analysis")
-    return None, None
+            return data.get("pins"), data.get("analysis"), data.get("amazon_url", "")
+    return None, None, ""
 
 # ── SESSION STATE ────────────────────────
 if "image_bytes_list" not in st.session_state:
     st.session_state.image_bytes_list = []
 if "pins" not in st.session_state:
-    saved_pins, saved_analysis = load_pins()
+    saved_pins, saved_analysis, saved_url = load_pins()
     st.session_state.pins = saved_pins
     st.session_state.analysis = saved_analysis
+    st.session_state.saved_url = saved_url
 if "groq_key" not in st.session_state:
     st.session_state.groq_key = ""
-if "show_save_prompt" not in st.session_state:
-    st.session_state.show_save_prompt = False
-if "pending_key" not in st.session_state:
-    st.session_state.pending_key = ""
+if "changing_key" not in st.session_state:
+    st.session_state.changing_key = False
 
-# ── READ KEY FROM PHONE MEMORY ───────────
-stored_key = st_javascript("localStorage.getItem('groq_key') || ''")
-if stored_key and stored_key != 0 and not st.session_state.groq_key:
-    st.session_state.groq_key = stored_key
-
-# also try streamlit secrets
-if not st.session_state.groq_key:
+# ── LOAD API KEY ─────────────────────────
+# Priority: Streamlit Secrets → localStorage → manual input
+def get_key():
+    # 1. try streamlit secrets first
     try:
-        st.session_state.groq_key = st.secrets["GROQ_API_KEY"]
+        key = st.secrets["GROQ_API_KEY"]
+        if key:
+            return key, "secrets"
     except:
         pass
+    # 2. try session state (from localStorage or manual)
+    if st.session_state.groq_key:
+        return st.session_state.groq_key, "stored"
+    return "", "none"
+
+groq_key, key_source = get_key()
+
+# read from localStorage as backup
+stored_key = st_javascript("localStorage.getItem('groq_key') || ''")
+if stored_key and stored_key != 0 and not groq_key:
+    st.session_state.groq_key = stored_key
+    groq_key = stored_key
+    key_source = "stored"
 
 # ── HEADER ──────────────────────────────
 st.title("📌 Pinterest Pin Generator")
 st.markdown("---")
 
 # ── API KEY SECTION ──────────────────────
-# ── API KEY SECTION ──────────────────────
-with st.expander("🔑 API Key", expanded=not st.session_state.groq_key):
+with st.expander("🔑 API Key", expanded=(key_source == "none" or st.session_state.changing_key)):
 
-    if st.session_state.groq_key and not st.session_state.get("changing_key", False):
+    if key_source == "secrets":
+        st.success("✅ API Key loaded from Streamlit Secrets — no action needed")
+
+    elif groq_key and not st.session_state.changing_key:
         st.success("✅ API Key loaded from phone memory")
         if st.button("🔄 Change Key"):
             st.session_state.changing_key = True
@@ -67,16 +79,13 @@ with st.expander("🔑 API Key", expanded=not st.session_state.groq_key):
             st_javascript("localStorage.removeItem('groq_key')")
             st.rerun()
     else:
-        st.markdown("Paste your Groq API key below — it will be saved automatically to this phone.")
-        new_key = st.text_input(
-            "Groq API Key",
-            type="password",
-            placeholder="gsk_..."
-        )
-        if st.button("💾 Save Key", use_container_width=True):
+        st.markdown("Paste your Groq API key — saved automatically to this phone.")
+        new_key = st.text_input("Groq API Key", type="password", placeholder="gsk_...")
+        if st.button("💾 Save Key to Phone", use_container_width=True):
             if new_key:
                 st.session_state.groq_key = new_key
                 st.session_state.changing_key = False
+                groq_key = new_key
                 st_javascript(f"localStorage.setItem('groq_key', '{new_key}')")
                 st.success("✅ Key saved!")
                 st.rerun()
@@ -88,8 +97,9 @@ with st.sidebar:
     st.header("📦 Product Info")
 
     amazon_url = st.text_input(
-        "Amazon URL (optional)",
-        placeholder="https://www.amazon.in/..."
+        "Amazon URL",
+        placeholder="https://www.amazon.in/...",
+        value=st.session_state.get("saved_url", "")
     )
 
     uploaded_files = st.file_uploader(
@@ -127,8 +137,8 @@ generate_btn = st.button(
 )
 
 if generate_btn:
-    if not st.session_state.groq_key:
-        st.error("Please set your Groq API key above.")
+    if not groq_key:
+        st.error("API key missing. Please add it above.")
     elif not st.session_state.image_bytes_list:
         st.error("Please upload at least one image.")
     elif not user_idea:
@@ -136,26 +146,31 @@ if generate_btn:
     else:
         with st.spinner("Analyzing product and generating pins..."):
             try:
-                os.environ["GROQ_API_KEY"] = st.session_state.groq_key
-                image_files = [
-                    io.BytesIO(b)
-                    for b in st.session_state.image_bytes_list
-                ]
+                os.environ["GROQ_API_KEY"] = groq_key
+                image_files = [io.BytesIO(b) for b in st.session_state.image_bytes_list]
                 pins, analysis = generate_pins(image_files, amazon_url, user_idea)
                 st.session_state.pins = pins
                 st.session_state.analysis = analysis
-                save_pins(pins, analysis)
+                st.session_state.saved_url = amazon_url
+                save_pins(pins, analysis, amazon_url)
                 st.success("✅ Pins generated!")
             except Exception as e:
                 st.error(f"Error: {str(e)}")
 
 # ── RESULTS ──────────────────────────────
 if st.session_state.pins:
-    pins = st.session_state.pins
+    pins     = st.session_state.pins
     analysis = st.session_state.analysis
+    url      = st.session_state.get("saved_url", "")
 
     st.markdown("---")
 
+    # Amazon URL display
+    if url:
+        st.markdown("### 🛒 Product Link")
+        st.markdown(f"[{url}]({url})")
+
+    # analysis expander
     if analysis:
         with st.expander("🔍 Product Visual Analysis"):
             col1, col2 = st.columns(2)
@@ -171,48 +186,32 @@ if st.session_state.pins:
     st.markdown("## 📌 Your 3 Pins")
     cols = st.columns(3)
 
+    all_content = ""
+    if url:
+        all_content += f"PRODUCT LINK:\n{url}\n\n{'='*50}\n\n"
+
     for i, (col, pin) in enumerate(zip(cols, pins)):
+        bullet_text = "\n".join([f"• {p}" for p in pin['bullet_points']])
+
         with col:
             st.markdown(f"### 🎯 Pin {i+1}: {pin['pin_angle']}")
 
-            st.markdown("**🪝 Title** *(click icon to copy)*")
+            st.markdown("**🪝 Title**")
             st.code(pin['title'], language=None)
 
-            st.markdown("**📝 Description** *(click icon to copy)*")
+            st.markdown("**📝 Description**")
             st.code(pin['description'], language=None)
 
-            st.markdown("**✅ Key Points** *(click icon to copy)*")
-            bullet_text = "\n".join([f"• {p}" for p in pin['bullet_points']])
+            st.markdown("**✅ Key Points**")
             st.code(bullet_text, language=None)
 
-            st.markdown("**⭐ Rating Angle** *(click icon to copy)*")
+            st.markdown("**⭐ Rating Angle**")
             st.code(pin['rating_tip'], language=None)
 
-            st.markdown("**🎨 Image Prompt for Gemini/GPT** *(click icon to copy)*")
+            st.markdown("**🎨 Image Prompt**")
             st.code(pin['image_prompt'], language=None)
 
-            content = (
-                f"PIN {i+1}: {pin['pin_angle']}\n\n"
-                f"TITLE:\n{pin['title']}\n\n"
-                f"DESCRIPTION:\n{pin['description']}\n\n"
-                f"KEY POINTS:\n{bullet_text}\n\n"
-                f"RATING TIP:\n{pin['rating_tip']}\n\n"
-                f"IMAGE PROMPT:\n{pin['image_prompt']}"
-            )
-
-            st.download_button(
-                label=f"⬇️ Download Pin {i+1}",
-                data=content,
-                file_name=f"pin_{i+1}.txt",
-                mime="text/plain",
-                use_container_width=True
-            )
-
-    # ── DOWNLOAD ALL ─────────────────────
-    st.markdown("---")
-    all_content = ""
-    for i, pin in enumerate(pins):
-        bullet_text = "\n".join([f"• {p}" for p in pin['bullet_points']])
+        # build download content
         all_content += (
             f"PIN {i+1}: {pin['pin_angle']}\n\n"
             f"TITLE:\n{pin['title']}\n\n"
@@ -223,10 +222,13 @@ if st.session_state.pins:
             f"{'='*50}\n\n"
         )
 
+    # ── SINGLE DOWNLOAD BUTTON ────────────
+    st.markdown("---")
     st.download_button(
-        label="⬇️ Download All 3 Pins Together",
+        label="⬇️ Download All 3 Pins",
         data=all_content,
         file_name="all_pins.txt",
         mime="text/plain",
-        use_container_width=True
+        use_container_width=True,
+        type="primary"
     )

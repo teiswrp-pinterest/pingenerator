@@ -85,16 +85,20 @@ For each pin return:
 2. title: hook-style title under 10 words, use 1-2 relevant emoticons, make people stop scrolling
 3. description: 2-3 sentences, hook then reveal style, sprinkle 2-3 emoticons naturally, end with soft CTA that has an emoticon
 4. bullet_points: 3-4 key product highlights as short punchy phrases with emoticons
-5. rating_tip: one sentence using Amazon ratings angle with an emoticon
+5. rating_tip: one sentence using Amazon ratings angle with an emoticon (e.g. "⭐ 4.5 rating for unbeatable value!")
 6. image_prompt: a highly detailed prompt grounded in the ACTUAL product visuals from the analysis.
    Must include:
    - exact product colors and materials from analysis
-   - specific background style matching the pin angle
+   - specific background style matching the pin angle  
    - lighting mood matching the angle
-   - where text overlay should go and what it should say
-   - Pinterest 2:3 ratio mention
+   - Pinterest 2:3 ratio, vertical format
    - overall aesthetic feel for that specific angle
-   Make this so specific that Gemini or GPT generates something very close to the actual product.
+   - IMPORTANT: the image must not just show the product. It must also display:
+     * 2-3 key product specs as text overlays (e.g. "40Hr Battery", "IPX5 Waterproof")
+     * 1-2 advantage callouts matching this pin angle (e.g. "Gym Ready", "Budget Pick under ₹999")
+     * where exactly these text overlays should appear on the image
+     * font style suggestion (bold, minimal, premium etc matching the mood)
+   Make this so specific that Gemini or GPT generates a complete Pinterest pin image with product + specs + advantages visible.
 
 Return ONLY a valid JSON array, no extra text:
 [
